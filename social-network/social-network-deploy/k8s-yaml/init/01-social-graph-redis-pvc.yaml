@@ -4,9 +4,9 @@
   name: social-graph-redis-pvc
   namespace: social-network
  spec:  
-  storageClassName: ocs-storagecluster-cephfs 
+  storageClassName: openebs-hostpath 
   accessModes:  
-   - ReadWriteMany  
+   - ReadWriteOnce  
   resources:  
    requests:  
     storage: 1Gi

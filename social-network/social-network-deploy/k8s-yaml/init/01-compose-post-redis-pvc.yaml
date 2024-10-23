@@ -4,9 +4,10 @@
   name: compose-post-redis-pvc
   namespace: social-network
  spec:  
-  storageClassName: ocs-storagecluster-cephfs 
+  storageClassName: openebs-hostpath
   accessModes:  
-   - ReadWriteMany
+   - ReadWriteOnce
   resources:  
    requests:  
-    storage: 100Gi
+    storage: 1Gi
+

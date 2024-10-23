@@ -6,7 +6,7 @@ FROM ${RESTY_IMAGE_BASE}:${RESTY_IMAGE_TAG}
 LABEL maintainer="Yu Gan <yg397@cornell.edu>"
 
 # Docker Build Arguments
-ARG RESTY_VERSION="1.13.6.1"
+ARG RESTY_VERSION="1.21.4.1"
 ARG RESTY_LUAROCKS_VERSION="2.4.3"
 ARG RESTY_OPENSSL_VERSION="1.0.2k"
 ARG RESTY_PCRE_VERSION="8.41"
@@ -97,8 +97,10 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && if [ -n "${RESTY_EVAL_PRE_CONFIGURE}" ]; then eval $(echo ${RESTY_EVAL_PRE_CONFIGURE}); fi \
     && curl -fSL https://www.openssl.org/source/openssl-${RESTY_OPENSSL_VERSION}.tar.gz -o openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
     && tar xzf openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
-    && curl -fSL https://ftp.pcre.org/pub/pcre/pcre-${RESTY_PCRE_VERSION}.tar.gz -o pcre-${RESTY_PCRE_VERSION}.tar.gz \
+    && curl -fSL https://sourceforge.net/projects/pcre/files/pcre/8.41/pcre-8.41.tar.gz/download -o pcre-${RESTY_PCRE_VERSION}.tar.gz \
     && tar xzf pcre-${RESTY_PCRE_VERSION}.tar.gz
+
+# FIXME pcre version is hardcoded in curl -fSL line above.
 
 ### Build opentracing-cpp
 RUN cd /tmp \
