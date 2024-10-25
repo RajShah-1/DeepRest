@@ -4,7 +4,7 @@
   name: elasticsearch-pvc
   namespace: social-network
  spec:  
-  storageClassName: ocs-storagecluster-cephfs  
+  storageClassName: openebs-hostpath  
   accessModes:  
    - ReadWriteOnce  
   resources:  
