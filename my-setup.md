@@ -114,11 +114,9 @@ $ kubectl apply -f social-network-deploy/k8s-yaml/
 nginx: [emerg] host not found in resolver "dns-default.openshift-dns.svc.cluster.local" in /usr/local/openresty/nginx/conf/nginx.conf:44
 ```
 
-- uff, we need to change the resolver! we're not using openshift resolver in minikube
+- Oh, we need to change the resolver! we're not using openshift resolver in minikube
 - changing that gave a new error about openresty's version being not supported on ARM. Need to do a version upgrade in media-frontend's docker image.
   - This is a bit tricky, it would be interesting/better if we could get this to work with emulation instead of building it for ARM, as jaeger-tracing also fails for ARM, and I was not able to find a fix for that without breaking a lot of other things.
-
-
 
 
 - To do that, we need to rebuild media-frontend image as we're currently using KHChow's image.
@@ -223,6 +221,7 @@ kubectl expose deployment media-frontend --type=NodePort --name=media-frontend-s
 
 minikube service nginx-thrift-service -n social-network
 minikube service media-frontend-service -n social-network
+
 
 
 ## Links

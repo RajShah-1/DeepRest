@@ -7,7 +7,6 @@ It includes the following two components:
 * `./social-network-deploy/`: the yaml files for deploying the application on the cloud
 * `./social-network-source/`: the source code of the social network
 
-# Deploy the Social Network
 This section describes how to deploy the social network on IBM cloud. It can be similarly deployed on Kubernetes or minikube with OpenEBS for experiment purposes (see `minikube-openebs`). 
 
 1. Copy the `social-network-deploy` folder to the infrastructure node. You should see two folders in your current directory: (1) `assets` and (2) `k8s-yaml`.
