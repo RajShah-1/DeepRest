@@ -1,7 +1,11 @@
+## Azure Setup
+
+Refer [azure-setup.md](./azure-setup.md)
 
 ## PACE Exploration (Inactive)
+
 ```
-(INACTIVE)
+(INACTIVE ice cluster does not support containers, only HIVE and PHOENIX support)
 ssh rshah647@login-ice.pace.gatech.edu 
 cd ~/scratch
 
