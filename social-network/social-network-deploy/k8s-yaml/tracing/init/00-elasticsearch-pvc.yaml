@@ -9,4 +9,7 @@
    - ReadWriteOnce  
   resources:  
    requests:  
-    storage: 5Gi
+    storage: 50Gi
+  claimRef:
+    namespace: social-network
+    name: elasticsearch-pvc
