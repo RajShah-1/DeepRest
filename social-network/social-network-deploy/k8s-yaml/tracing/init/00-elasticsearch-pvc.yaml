@@ -2,7 +2,7 @@
  kind: PersistentVolumeClaim  
  metadata:  
   name: elasticsearch-pvc
-  namespace: default
+  namespace: social-network
  spec:  
   storageClassName: openebs-hostpath  
   accessModes:  
@@ -10,6 +10,3 @@
   resources:  
    requests:  
     storage: 50Gi
-  claimRef:
-    namespace: social-network
-    name: elasticsearch-pvc
