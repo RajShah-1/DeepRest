@@ -28,11 +28,9 @@ source ~/.bashrc
 ## Fresh Setup:
 
 ```
-alias minikube="~/minikube"
-```
+git clone https://github.com/RajShah-1/DeepRest.git
 
-```
-minikube start --cpus 4 --memory 8192 --kubernetes-version=v1.20.1
+minikube start --cpus 4 --memory 12288 --kubernetes-version=v1.20.1
 kubectl apply -f https://openebs.github.io/charts/openebs-operator.yaml
 cd $DEEPREST_DIR/social-network
 kubectl apply -f social-network-deploy/k8s-yaml/init/
@@ -61,6 +59,11 @@ kubectl delete -f social-network-deploy/k8s-yaml/init/02-frontend-initializer.ya
 
 ## Trying to enable Jaegar and stuff
 ```
+
+kubectl create clusterrole jaeger-operator --verb=get,list,watch --resource=namespaces
+kubectl create clusterrolebinding jaeger-operator --clusterrole=jaeger-operator --serviceaccount=default:jaeger-operator
+
+
 kubectl apply -f social-network-deploy/k8s-yaml/tracing/init/
 
 # Wait for a while before running the below!
@@ -77,6 +80,15 @@ kubectl apply -f social-network-deploy/k8s-yaml/
 ```
 ssh -i ~/.ssh/deeprest.pem -L 8082:10.98.32.24:8080 -L 8083:10.107.33.22:8080 azureuser@20.120.245.199
 ```
+
+
+
+
+127.0.0.1:46521
+
+ssh -i ~/.ssh/deeprest.pem -L 8082:10.109.33.14:8080 -L 8083:10.100.74.229:8080 -L 8084:46521 azureuser@20.120.245.199
+
+
 
 - How to expose Jaeger end-points (it does not unfortunately use a load-balancer)
 - So Jaeger is currently failing...
@@ -106,5 +118,11 @@ minikube start --kubernetes-version=v1.20.1
 
 
 
-## Debugging Jaeger failure
+## Important Notes
+
+- We need to follow some steps to mount the attached disk on azure:
+	- Refer: https://learn.microsoft.com/en-us/azure/virtual-machines/windows/attach-managed-disk-portal#initialize-a-new-data-disk
+- Jaeger UI is attached to jaeger-elasticsearch-query service. Expose using minikube service and not through kube ingress (kube ingress is setup specific to OpenShift, and does not currently work on minikube)
+- Jaeger UI takes some time to load the traces. Be patient.
+
 
