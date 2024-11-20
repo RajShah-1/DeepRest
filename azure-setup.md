@@ -83,15 +83,16 @@ ssh -i ~/.ssh/deeprest.pem -L 8082:10.98.32.24:8080 -L 8083:10.107.33.22:8080 az
 
 
 
-
+```
 127.0.0.1:46521
 
 ssh -i ~/.ssh/deeprest.pem -L 8082:10.109.33.14:8080 -L 8083:10.100.74.229:8080 -L 8084:46521 azureuser@20.120.245.199
 
-
+```
 
 - How to expose Jaeger end-points (it does not unfortunately use a load-balancer)
 - So Jaeger is currently failing...
+```
 azureuser@DR-1:~$ kubectl get jaeger jaeger-elasticsearch
 NAME                   STATUS   VERSION   STRATEGY     STORAGE         AGE
 jaeger-elasticsearch   Failed             production   elasticsearch   112m:
@@ -101,6 +102,7 @@ jaeger-elasticsearch   Failed             production   elasticsearch   112m
 
 - Useful command to check the logs of jaeger-operator
 $ kubectl logs -f deployment/jaeger-operator
+```
 
 - Resolving type-1 error:
 ```
