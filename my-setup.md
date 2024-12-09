@@ -173,7 +173,7 @@ minikube image load local:media-frontend
 There's one error left in media-frontend:
 
 ```
-kubectl logs media-frontend-5f585b847-6d5mx -n social-network
+$ kubectl logs media-frontend-5f585b847-6d5mx -n social-network
 2024/10/22 04:57:19 [error] 1#1: Failed to load tracing library /usr/local/lib/libjaegertracing_plugin.so: /usr/local/lib/libjaegertracing_plugin.so: cannot open shared object file: No such file or directory
 nginx: [error] Failed to load tracing library /usr/local/lib/libjaegertracing_plugin.so: /usr/local/lib/libjaegertracing_plugin.so: cannot open shared object file: No such file or directory
 ```
@@ -195,7 +195,7 @@ export DOCKER_DEFAULT_PLATFORM=linux/amd64
 minikube delete --all --purge
 minikube start --cpus 4 --memory 4096 --base-image='gcr.io/k8s-minikube/kicbase:v0.0.45'
 
-> Running the above commands lead to the following error. Help me debug.
+> Running the above commands lead to the following error.
 
 💣  Error starting cluster: wait: /bin/bash -c "sudo env PATH="/var/lib/minikube/binaries/v1.31.0:$PATH" kubeadm init --config /var/tmp/minikube/kubeadm.yaml  --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests,DirAvailable--var-lib-minikube,DirAvailable--var-lib-minikube-etcd,FileAvailable--etc-kubernetes-manifests-kube-scheduler.yaml,FileAvailable--etc-kubernetes-manifests-kube-apiserver.yaml,FileAvailable--etc-kubernetes-manifests-kube-controller-manager.yaml,FileAvailable--etc-kubernetes-manifests-etcd.yaml,Port-10250,Swap,NumCPU,Mem,SystemVerification,FileContent--proc-sys-net-bridge-bridge-nf-call-iptables": Process exited with status 1
 stdout:

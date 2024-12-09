@@ -24,14 +24,46 @@ echo 'alias minikube="~/minikube"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
+## Mounting a disk in azure
+
+- Find out which disk to attach:
+```
+lsblk -o NAME,HCTL,SIZE,MOUNTPOINT | grep -i "sd"
+```
+- Prepare
+```
+sudo parted /dev/sdc --script mklabel gpt mkpart xfspart xfs 0% 100%
+sudo mkfs.xfs /dev/sdc1
+sudo partprobe /dev/sdc1
+```
+- Actually mount the disk
+```
+mkdir data
+sudo mount /dev/sdc1 ~/data
+sudo chown -R azureuser:azureuser data/
+```
+
+## Symlink /var/lib/docker to ~/data/docker
+```
+# elevate
+sudo su -
+mv /var/lib/docker ~/data
+ln -snf ~/data/docker /var/lib/docker
+exit
+```
 
 ## Fresh Setup:
 
 ```
 git clone https://github.com/RajShah-1/DeepRest.git
+git checkout local-setup
+
 
 minikube start --cpus 4 --memory 12288 --kubernetes-version=v1.20.1
+minikube mount /run/udev:/run/udev &
 kubectl apply -f https://openebs.github.io/charts/openebs-operator.yaml
+
+
 cd $DEEPREST_DIR/social-network
 kubectl apply -f social-network-deploy/k8s-yaml/init/
 kubectl cp social-network-deploy/assets/media-frontend/ social-network/centos:/media-config
@@ -40,6 +72,14 @@ kubectl cp social-network-deploy/assets/gen-lua/ social-network/centos:/nginx-co
 kubectl delete -f social-network-deploy/k8s-yaml/init/02-frontend-initializer.yaml
 # Enable Jaeger first!
 # kubectl apply -f social-network-deploy/k8s-yaml/
+```
+
+(optional, but recommended for easy metric scrapping, otherwise need to write a custom python metric scrapper daemon)
+```
+# Install helm and prometheus
+sudo snap install helm --classic
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+
 ```
 
 - Cleanup steps:
@@ -57,7 +97,7 @@ kubectl delete -f social-network-deploy/k8s-yaml/init/02-frontend-initializer.ya
 	```
 
 
-## Trying to enable Jaegar and stuff
+## Trying to enable Jaegar and friends
 ```
 
 kubectl create clusterrole jaeger-operator --verb=get,list,watch --resource=namespaces
@@ -92,12 +132,14 @@ ssh -i ~/.ssh/deeprest.pem -L 8082:10.109.33.14:8080 -L 8083:10.100.74.229:8080 
 
 - How to expose Jaeger end-points (it does not unfortunately use a load-balancer)
 - So Jaeger is currently failing...
+```
 azureuser@DR-1:~$ kubectl get jaeger jaeger-elasticsearch
 NAME                   STATUS   VERSION   STRATEGY     STORAGE         AGE
 jaeger-elasticsearch   Failed             production   elasticsearch   112m:
 azureuser@DR-1:~$ kubectl get jaeger jaeger-elasticsearch
 NAME                   STATUS   VERSION   STRATEGY     STORAGE         AGE
 jaeger-elasticsearch   Failed             production   elasticsearch   112m
+```
 
 - Useful command to check the logs of jaeger-operator
 $ kubectl logs -f deployment/jaeger-operator
@@ -117,12 +159,33 @@ kubectl logs -f deployment/jaeger-operator
 minikube start --kubernetes-version=v1.20.1
 
 
+## Scrapping Prep:
+
+- Get the metric server
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+- Add kubelet-insecure-tls in `kubectl edit deployment metrics-server -n kube-system`
+```
+args:
+  - --cert-dir=/tmp
+  - --secure-port=10250
+  - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+  - --kubelet-use-node-status-port
+  - --metric-resolution=15s
+  - --kubelet-insecure-tls
+```
+- Mount /run/udev to minikube for openebs ndm
+ to work
+`minikube mount /run/udev:/run/udev`
+
+
+
 
 ## Important Notes
 
 - We need to follow some steps to mount the attached disk on azure:
 	- Refer: https://learn.microsoft.com/en-us/azure/virtual-machines/windows/attach-managed-disk-portal#initialize-a-new-data-disk
 - Jaeger UI is attached to jaeger-elasticsearch-query service. Expose using minikube service and not through kube ingress (kube ingress is setup specific to OpenShift, and does not currently work on minikube)
-- Jaeger UI takes some time to load the traces. Be patient.
+- Jaeger UI takes some time to load the traces. Be patient. 
 
+## Running the load sim
 

@@ -25,11 +25,17 @@ class QuantileRNN(nn.Module):
              nn.Linear(hidden_layer_size * (2 if bidirectional else 1) * 2, len(quantiles))]
         ) for _ in range(num_metrics)])
 
+        # Explainability - store attention weights
+        print(input_size)
+        self.attention_weights = None
+
     def forward(self, input_seq):
         batch_size = input_seq.shape[0]
 
         predictions = []
         rnn_outs = []
+        attention_weights = []
+
         for mask_linear1, mask_linear2, rnn, _ in self.experts:
             mask = self.softmax(mask_linear2(self.relu(mask_linear1(self.mask_init))))
 
@@ -43,6 +49,10 @@ class QuantileRNN(nn.Module):
             rnn_out = self.dropout(rnn_out)
             rnn_outs.append(rnn_out)
 
+            # Store attention weights for explainability
+            attention_weights.append(mask)
+
+        # Aggregate RNN outputs for predictions
         for i in range(self.num_metrics):
             m = []
             for j in range(self.num_metrics):
@@ -52,6 +62,10 @@ class QuantileRNN(nn.Module):
             m = torch.mean(torch.stack(m), dim=0)
             m = torch.cat([m, rnn_outs[i]], dim=-1)
             predictions.append(self.experts[i][-1](m))
+
+        # Store attention weights
+        self.attention_weights = torch.stack(attention_weights).detach()
+
         predictions = torch.stack(predictions).permute(1, 2, 0, 3)
         return predictions
 
@@ -73,3 +87,19 @@ class QuantileRNN(nn.Module):
         if (max_val - min_val) != 0.0:
             M = (M - min_val) / (max_val - min_val)
         return M, min_val, max_val
+
+    def explain_attention(self, feature_index=None):
+        """
+        Explains the importance of input features based on attention weights.
+
+        Args:
+            feature_index (int or None): If None, returns attention weights for all features.
+                                         If an integer, returns weights for the specific feature.
+        Returns:
+            torch.Tensor: Attention weights for the specified feature or all features.
+        """
+        if self.attention_weights is None:
+            raise ValueError("No attention weights available. Run the forward pass first.")
+        if feature_index is not None:
+            return self.attention_weights[:, :, feature_index]
+        return self.attention_weights

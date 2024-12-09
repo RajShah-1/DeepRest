@@ -18,29 +18,65 @@ split         = 0.40              # The first split*100% of the time-series will
 step_size     = 60                # The window size for the Quantile RNN and visualization
 ########################################################################################################################
 
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+def visualize_attention(attention_scores, feature_names=None, title="Attention Scores", metric_idx=None):
+    """
+    Visualize attention scores as a heatmap.
+
+    Args:
+        attention_scores (torch.Tensor): Attention scores tensor of shape (num_metrics, num_features).
+        feature_names (list or None): Names of features for labeling the heatmap. If None, use indices.
+        title (str): Title of the heatmap.
+        metric_idx (int or None): If None, visualizes for all metrics. If an integer, visualizes for that metric only.
+    """
+    attention_scores = attention_scores.cpu().numpy()
+
+    if metric_idx is not None:
+        attention_scores = attention_scores[metric_idx:metric_idx + 1]
+        title += f" - Metric {metric_idx}"
+
+    if feature_names is None:
+        feature_names = [f"Feature {i}" for i in range(attention_scores.shape[-1])]
+
+    plt.figure(figsize=(10, 6))
+    plt.imshow(attention_scores, cmap="viridis", aspect="auto")
+    plt.colorbar(label="Attention Score")
+    plt.title(title)
+    plt.xlabel("Feature")
+    plt.ylabel("Metric")
+    plt.xticks(ticks=np.arange(len(feature_names)), labels=feature_names, rotation=45)
+    plt.yticks(ticks=np.arange(attention_scores.shape[0]),
+               labels=[f"Metric {i}" for i in range(attention_scores.shape[0])])
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == '__main__':
     with open(path_to_input, 'rb') as f:
         traffic, resources, invocations = pickle.load(f)
-    
-    # Write data to file in a human-readable format
-    with open('./out.txt', "w") as file:
-        file.write(np.array2string(traffic, separator=", "))
-        # file.write(traffic)
-        import json
-        # Function to convert NumPy arrays to lists in a dictionary
-        def serialize_dict(obj):
-            if isinstance(obj, dict):
-                return {key: serialize_dict(value) for key, value in obj.items()}
-            elif isinstance(obj, np.ndarray):
-                return obj.tolist()
-            elif isinstance(obj, list):
-                return [serialize_dict(item) for item in obj]
-            else:
-                return obj
-        file.write('\n######### Resources\n')
-        file.write(json.dumps(serialize_dict(resources)))
-        file.write('\n######### INVOCATIONS\n')
-        file.write(np.array2string(invocations, separator=", "))
+
+    # Write data to file in a human-readable format for debugging
+    # with open('./out.txt', "w") as file:
+    #     file.write(np.array2string(traffic, separator=", "))
+    #     # file.write(traffic)
+    #     import json
+    #     # Function to convert NumPy arrays to lists in a dictionary
+    #     def serialize_dict(obj):
+    #         if isinstance(obj, dict):
+    #             return {key: serialize_dict(value) for key, value in obj.items()}
+    #         elif isinstance(obj, np.ndarray):
+    #             return obj.tolist()
+    #         elif isinstance(obj, list):
+    #             return [serialize_dict(item) for item in obj]
+    #         else:
+    #             return obj
+    #     file.write('\n######### Resources\n')
+    #     file.write(json.dumps(serialize_dict(resources)))
+    #     file.write('\n######### INVOCATIONS\n')
+    #     file.write(np.array2string(invocations, separator=", "))
 
 
 
@@ -74,7 +110,7 @@ if __name__ == '__main__':
     X_train, y_train = X[:split], y[:split]
     X_test, y_test = X[split:], y[split:]
 
-    print(y_test_resrc.shape, y_test_comp.shape)
+    print(y_test_resrc.shape, y_test_comp.shape, y_test.shape)
     assert y_test.shape == y_test_resrc.shape == y_test_comp.shape, 'y_test\'s sizes do not match.'
 
     train_dataset = TensorDataset(torch.Tensor(X_train), torch.Tensor(y_train))
@@ -161,35 +197,41 @@ if __name__ == '__main__':
 
     # Begin model testing with visualization
     model.eval()
-    with torch.no_grad():
-        num_cycles = 0
-        for iv, (inputs, labels) in enumerate(test_loader):
-            if iv % step_size != 0 or num_cycles >= 9:
-                continue
-            num_cycles += 1
-            inputs = inputs.to(device)
-            labels = labels.to(device)
-            outputs = model(inputs)
-
-            labels = labels.detach().cpu().numpy()[0]
-            outputs_deeprest = outputs.detach().cpu().numpy()[0]
-            outputs_resrc = y_test_resrc[iv]
-            outputs_comp = y_test_comp[iv]
-
-            plt.clf()
-            plt.figure(figsize=(len(names) * 6, 6))
-            for idx in range(len(names)):
-                plt.subplot(1, len(names), idx+1)
-                labels_ = labels[:, idx] * scales[idx][0] + scales[idx][1]
-                outputs_deeprest_ = outputs_deeprest[:, idx, 1] * scales[idx][0] + scales[idx][1]
-                outputs_resrc_ = outputs_resrc[:, idx]
-                outputs_comp_ = outputs_comp[:, idx]
-
-                plt.title(names[idx])
-                plt.plot(labels_, label='Ground Truth', linestyle='--', color='red')
-                plt.plot(outputs_resrc_, label='Baseline: Resrc-aware ANN', color='green')
-                plt.plot(outputs_comp_, label='Baseline: Req-aware LinearRegr', color='orange')
-                plt.plot(outputs_deeprest_, label='DeepRest', color='mediumblue')
-                plt.tight_layout()
-            plt.show()
-            plt.close()
+    print(model.explain_attention())
+    visualize_attention(model.explain_attention())
+    # with torch.no_grad():
+    #     num_cycles = 0
+    #     for iv, (inputs, labels) in enumerate(test_loader):
+    #         if iv % step_size != 0 or num_cycles >= 9:
+    #             continue
+    #         num_cycles += 1
+    #         inputs = inputs.to(device)
+    #         labels = labels.to(device)
+    #         outputs = model(inputs)
+    #
+    #         labels = labels.detach().cpu().numpy()[0]
+    #         outputs_deeprest = outputs.detach().cpu().numpy()[0]
+    #         outputs_resrc = y_test_resrc[iv]
+    #         outputs_comp = y_test_comp[iv]
+    #
+    #         plt.clf()
+    #         plt.figure(figsize=(len(names) * 6, 6))
+    #         for idx in range(len(names)):
+    #             plt.subplot(1, len(names), idx+1)
+    #             labels_ = labels[:, idx] * scales[idx][0] + scales[idx][1]
+    #             outputs_deeprest_ = outputs_deeprest[:, idx, 1] * scales[idx][0] + scales[idx][1]
+    #             outputs_resrc_ = outputs_resrc[:, idx]
+    #             outputs_comp_ = outputs_comp[:, idx]
+    #
+    #             plt.title(names[idx])
+    #             plt.plot(labels_, label='Ground Truth', linestyle='--', color='red')
+    #             # plt.plot(outputs_resrc_, label='Baseline: Resrc-aware ANN', color='green')
+    #             # plt.plot(outputs_comp_, label='Baseline: Req-aware LinearRegr', color='orange')
+    #             plt.plot(outputs_deeprest_, label='DeepRest', color='mediumblue')
+    #
+    #             plt.xlabel('Time (or corresponding x-axis label)')
+    #             plt.ylabel('Values (or corresponding y-axis label)')
+    #             plt.legend(loc='upper right')
+    #             plt.tight_layout()
+    #         plt.show()
+    #         plt.close()
