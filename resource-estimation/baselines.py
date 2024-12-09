@@ -83,7 +83,7 @@ class ComponentAware(object):
         self.component = component
         self.metric = metric
         self.split = split
-        self.invocation = invocation[component] if component in invocation else invocation['general']
+        self.invocation = invocation
 
     @staticmethod
     def baseline_scaling(x, w1, w2, w3, w4):

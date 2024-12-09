@@ -1,9 +1,10 @@
 import numpy as np
 import pickle
+import json
 import copy
 
 ########################################################################################################################
-path_to_raw_data = './raw_data.pkl'  # The raw data following the format specified in the README.md
+path_to_raw_data = '/Users/rajshah/Projects/DeepRest/DeepRest/locust/scraping/merged_data.json'  # The raw data following the format specified in the README.md
 path_to_save     = './input.pkl'     # The location to save the formatted data to be used by estimate.py
 ########################################################################################################################
 
@@ -61,7 +62,7 @@ if __name__ == '__main__':
     ####################################################################################################################
     # 0. Load raw data from disk
     with open(path_to_raw_data, 'rb') as f:
-        raw_data = pickle.load(f)
+        raw_data = json.load(f)
 
     ####################################################################################################################
     # 1. Format resources (the outputs)

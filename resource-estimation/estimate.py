@@ -21,11 +21,35 @@ step_size     = 60                # The window size for the Quantile RNN and vis
 if __name__ == '__main__':
     with open(path_to_input, 'rb') as f:
         traffic, resources, invocations = pickle.load(f)
+    
+    # Write data to file in a human-readable format
+    with open('./out.txt', "w") as file:
+        file.write(np.array2string(traffic, separator=", "))
+        # file.write(traffic)
+        import json
+        # Function to convert NumPy arrays to lists in a dictionary
+        def serialize_dict(obj):
+            if isinstance(obj, dict):
+                return {key: serialize_dict(value) for key, value in obj.items()}
+            elif isinstance(obj, np.ndarray):
+                return obj.tolist()
+            elif isinstance(obj, list):
+                return [serialize_dict(item) for item in obj]
+            else:
+                return obj
+        file.write('\n######### Resources\n')
+        file.write(json.dumps(serialize_dict(resources)))
+        file.write('\n######### INVOCATIONS\n')
+        file.write(np.array2string(invocations, separator=", "))
+
+
 
     names = list(resources.keys())
     X = sliding_window(traffic, step_size)
     y = sliding_window(np.concatenate([resources[name] for name in names], axis=-1), step_size)
     split = int(len(X) * split)
+    print(traffic.shape, X.shape, y.shape)
+    # print(resources[names[0]], names[0])
 
     # Baseline methods to estimate resources
     y_test_resrc, y_test_comp = [], []
@@ -36,7 +60,7 @@ if __name__ == '__main__':
         y_test_comp.append(ComponentAware(split=split, output_size=step_size, component=component, metric=metric,
                                           invocation=invocations).fit_and_estimate(X, y[:, :, [idx]]))
     y_test_resrc = np.concatenate(y_test_resrc, axis=-1)
-    y_test_comp = np.concatenate(y_test_comp, axis=-1)
+    y_test_comp = np.squeeze(np.concatenate(y_test_comp, axis=-1))
 
     # Data normalization
     X, _, _ = QuantileRNN.normalization_minmax(X, split=split)
@@ -49,6 +73,8 @@ if __name__ == '__main__':
     # Prepare training and test sets
     X_train, y_train = X[:split], y[:split]
     X_test, y_test = X[split:], y[split:]
+
+    print(y_test_resrc.shape, y_test_comp.shape)
     assert y_test.shape == y_test_resrc.shape == y_test_comp.shape, 'y_test\'s sizes do not match.'
 
     train_dataset = TensorDataset(torch.Tensor(X_train), torch.Tensor(y_train))
