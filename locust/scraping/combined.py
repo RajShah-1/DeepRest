@@ -6,13 +6,13 @@ import os
 
 PROMETHEUS_URL = "http://localhost:39963"
 JAEGER_ENDPOINT = "http://localhost:34915/api/traces"
-LOOKBACK = "1m"
+TZ_OFF_FOR_JAEGER_SECS = 5 * 60 * 60  # Jaeger timestamps are in UTC
 
 EXCLUDE_INTERNAL_PODS = (
     'pod!~"elasticsearch-0|kube-.*|jaeger.*|.*prom.*|etcd.*|openebs.*"'
 )
 
-# Queries
+# Prometheus Queries
 CPU_QUERY = (
     f'sum by (pod) ('
     f'  60 * rate('
@@ -66,8 +66,8 @@ def query_prometheus_range(query, start_time, end_time, step):
     return data['data']['result']
 
 
-def get_traces(service_name, lookback):
-    url = f"{JAEGER_ENDPOINT}?service={service_name}&lookback={lookback}"
+def get_all_traces(service_name):
+    url = f"{JAEGER_ENDPOINT}?service={service_name}"
     response = requests.get(url)
     if response.status_code == 200:
         return response.json()
@@ -76,20 +76,32 @@ def get_traces(service_name, lookback):
         return []
 
 
+def assign_spans_to_timestamps(traces, combined_data, step):
+    for trace in traces.get("data", []):
+        for span in trace.get("spans", []):
+            start_time_seconds = span.get("startTime", 0) // 1_000_000  # Convert microseconds to seconds
+            timestamp = ((start_time_seconds) // step) * step  # Align to the nearest step interval
+            if timestamp not in combined_data:
+                combined_data[timestamp] = {"metrics": {}, "traces": []}
+            combined_data[timestamp]["traces"].append(span)
+
+
 def main():
     end_time = int(time.time())
-    start_time = end_time - 3600  # Past 1 hour
+    start_time = end_time - 1200  # Past 1 hour
     step = 60  # 1-minute intervals
 
+    # Query Prometheus for CPU and memory metrics
     cpu_data = query_prometheus_range(CPU_QUERY, start_time, end_time, step)
     mem_data = query_prometheus_range(MEMORY_QUERY, start_time, end_time, step)
 
-    # Create a dictionary of timestamps
     combined_data = {}
 
+    # Aggregate Prometheus metrics by timestamp
     for item in cpu_data:
         pod = item['metric'].get('pod', 'unknown')
         for timestamp, value in item['values']:
+            timestamp = ((timestamp) // step) * step  # Align to the nearest step interval
             if timestamp not in combined_data:
                 combined_data[timestamp] = {"metrics": {}, "traces": []}
             if pod not in combined_data[timestamp]["metrics"]:
@@ -99,19 +111,17 @@ def main():
     for item in mem_data:
         pod = item['metric'].get('pod', 'unknown')
         for timestamp, value in item['values']:
+            timestamp = ((timestamp) // step) * step  # Align to the nearest step interval
             if timestamp not in combined_data:
                 combined_data[timestamp] = {"metrics": {}, "traces": []}
             if pod not in combined_data[timestamp]["metrics"]:
                 combined_data[timestamp]["metrics"][pod] = {"cpu": 0, "memory": 0}
             combined_data[timestamp]["metrics"][pod]["memory"] += float(value) / (1024 * 1024)
 
+    # Fetch and integrate Jaeger spans
     for svc in SERVICES:
-        traces = get_traces(svc, LOOKBACK)
-        if traces:
-            for trace in traces.get('data', []):
-                trace_start_time = int(trace.get("startTimeMillis", 0) / 1000)
-                if str(trace_start_time) in combined_data:
-                    combined_data[str(trace_start_time)]["traces"].append(trace)
+        raw_traces = get_all_traces(svc)
+        assign_spans_to_timestamps(raw_traces, combined_data, step)
 
     # Format data for final JSON output
     final_data = []
@@ -123,9 +133,12 @@ def main():
             "metrics": metrics
         })
 
+    # Sort final data by timestamp
+    final_data_sorted = sorted(final_data, key=lambda x: int(x["timestamp"]))
+
     # Save to JSON file
     with open("merged_data.json", "w") as json_file:
-        json.dump(final_data, json_file, indent=4)
+        json.dump(final_data_sorted, json_file, indent=4)
 
     print("Merged data saved to merged_data.json")
 
